@@ -3,7 +3,7 @@ import { testDictionary, realDictionary } from './dictionary.js';
 // for testing purposes, make sure to use the test dictionary
 console.log('test dictionary:', testDictionary);
 
-const dictionary = realDictionary;
+const dictionary = testDictionary;
 const state = {
   secret: dictionary[Math.floor(Math.random() * dictionary.length)],
   grid: Array(6)
@@ -12,6 +12,7 @@ const state = {
   currentRow: 0,
   currentCol: 0,
 };
+let previousState = structuredClone(state);
 
 function drawGrid(container) {
   const grid = document.createElement('div');
@@ -30,20 +31,43 @@ function updateGrid() {
   for (let i = 0; i < state.grid.length; i++) {
     for (let j = 0; j < state.grid[i].length; j++) {
       const box = document.getElementById(`box${i}${j}`);
-      box.textContent = state.grid[i][j];
+      if(previousState.grid[i][j] != state.grid[i][j] && state.grid[i][j] != ""){
+        box.addEventListener('animationend', onAnimationEnd(box));
+        box.classList.add('pulse');
+      }
+      box.children[0].textContent = state.grid[i][j];
     }
   }
 }
 
+function onAnimationEnd(element) {
+  return function() {
+    element.classList.remove('pulse');
+    element.removeEventListener('animationend', onAnimationEnd);
+  };
+}
+
 function drawBox(container, row, col, letter = '') {
+  // Create the main box div
   const box = document.createElement('div');
   box.className = 'box';
-  box.textContent = letter;
   box.id = `box${row}${col}`;
 
+  // Create the box-front div
+  const boxFront = document.createElement('div');
+  boxFront.className = 'box-front';
+  box.appendChild(boxFront);
+
+  // Create the box-back div
+  const boxBack = document.createElement('div');
+  boxBack.className = 'box-back';
+  box.appendChild(boxBack);
+  
+  box.children[0].textContent = letter;
   container.appendChild(box);
   return box;
 }
+
 
 function registerKeyboardEvents() {
   document.body.onkeydown = (e) => {
@@ -53,6 +77,7 @@ function registerKeyboardEvents() {
         const word = getCurrentWord();
         if (isWordValid(word)) {
           revealWord(word);
+          previousState = structuredClone(state);
           state.currentRow++;
           state.currentCol = 0;
         } else {
@@ -105,7 +130,7 @@ function revealWord(guess) {
 
   for (let i = 0; i < 5; i++) {
     const box = document.getElementById(`box${row}${i}`);
-    const letter = box.textContent;
+    const letter = box.children[0].textContent;
     const numOfOccurrencesSecret = getNumOfOccurrencesInWord(
       state.secret,
       letter
@@ -152,12 +177,14 @@ function isLetter(key) {
 
 function addLetter(letter) {
   if (state.currentCol === 5) return;
+  previousState = structuredClone(state);
   state.grid[state.currentRow][state.currentCol] = letter;
   state.currentCol++;
 }
 
 function removeLetter() {
   if (state.currentCol === 0) return;
+  previousState = structuredClone(state);
   state.grid[state.currentRow][state.currentCol - 1] = '';
   state.currentCol--;
 }
